@@ -1,0 +1,8 @@
+ThreadedKernel's selfTest() method was modified for alarm class.
+selfTest() method added to Alarm class.
+
+Alarm Tests: threads created and put to sleep through "waitUntil" method.
+    Threads with longer wait times will be woken later, even if they were added first (priority queue working).
+    Even when wait times are large negative values, threads will simply be woken up during the next timerInterrupt call
+
+output uploaded to D2L.
