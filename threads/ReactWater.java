@@ -1,5 +1,6 @@
 package nachos.threads;
-import java.util.*;
+import java.util.Queue;
+import java.util.LinkedList;
 import nachos.machine.*;
 
 public class ReactWater {
@@ -7,8 +8,6 @@ public class ReactWater {
 	private Queue<KThread> hWait = new LinkedList<KThread>();
 	private Queue<KThread> oWait = new LinkedList<KThread>();
 	int hCount, oCount;
-	int H;
-	int O;
 	private Lock locks = new Lock();
 	
 	public ReactWater(Lock locks) {
@@ -19,22 +18,16 @@ public class ReactWater {
 	
 	//When there's 1 H and 1 O it will form H2O
 	public void hReady() {
-		if(H== 1 && O == 1) {
-		hCount++;
+		hCount++;		
+		hWait.add(KThread.currentThread()); //Waits for more Hydrogen or Oxygen
 		Makewater();
-		}
-		//Waits for more Hydrogen or Oxygen
-		hWait.add(KThread.currentThread());
-	
 	}
+	
 //When there's 2 H's it will form H2O	
 	public void oReady() {
-		if(H == 2) {
 			oCount++;
+			oWait.add(KThread.currentThread());	//Waits for Hydrogen or Oxygen
 			Makewater();
-		}
-		//Waits for Hydrogen or Oxygen
-		oWait.add(KThread.currentThread());
 	}
 	
 	public void Makewater() {
