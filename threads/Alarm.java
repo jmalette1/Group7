@@ -98,13 +98,13 @@ public class Alarm {
     public void waitUntil(long x) {
     	long wakeTime = Machine.timer().getTime() + x;
     	
-    	boolean intState = Machine.interrupt().disable(); //disabling interrupts seems to be necessary
+    	boolean interruptStatus = Machine.interrupt().disable(); //disabling interrupts seems to be necessary
 	
     	WaitThread newWaitThread = new WaitThread(wakeTime, KThread.currentThread());
     	sleepQueue.add(newWaitThread);
     	KThread.currentThread().sleep();
     	
-    	Machine.interrupt().restore(intState); //reenabling interrupts
+    	Machine.interrupt().restore(interruptStatus); //reenabling interrupts
     }
     
     /**
