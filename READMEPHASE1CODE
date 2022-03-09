@@ -1,3 +1,11 @@
+Modifications to "threads" folder:
+    -Condition2
+    -KTHread
+    -Alarm
+    -ThreadedKernel
+    -ReactWater (NEW)
+
+MakeFile modified to add ReactWater to "threads = " section
 ThreadedKernel's selfTest() method was modified for alarm class.
 selfTest() method added to Alarm class.
 
@@ -5,4 +13,52 @@ Alarm Tests: threads created and put to sleep through "waitUntil" method.
     Threads with longer wait times will be woken later, even if they were added first (priority queue working).
     Even when wait times are large negative values, threads will simply be woken up during the next timerInterrupt call
 
-output uploaded to D2L.
+    Example output (randomized so will change):
+    
+    testing Alarm
+    Thread 0 stored at timestamp: 2290
+    delay = 8301
+    Thread 1 stored at timestamp: 2300
+    delay = 4277
+    Thread 2 stored at timestamp: 2310
+    delay = 5258
+    Thread 3 stored at timestamp: 2320
+    delay = 7112
+    Thread 4 stored at timestamp: 2330
+    delay = 6914
+    Thread 5 stored at timestamp: 2340
+    delay = 66
+    Thread 6 stored at timestamp: 2350
+    delay = 910
+    Thread 7 stored at timestamp: 2360
+    delay = 8208
+    Thread 8 stored at timestamp: 2370
+    delay = 5983
+    Thread 9 stored at timestamp: 2380
+    delay = 8587
+    Thread 10 stored at timestamp: 2390
+    delay = 3247
+    Thread 11 stored at timestamp: 2400
+    delay = 4403
+    Thread 12 stored at timestamp: 2410
+    delay = 652
+    Thread 13 stored at timestamp: 2420
+    delay = 7074
+    Thread 14 stored at timestamp: 2430
+    delay = 1322
+    Thread 5 woken up at: 2560, and 2560 >= 2340+66(wake-up time)
+    Thread 12 woken up at: 3560, and 3560 >= 2410+652(wake-up time)
+    Thread 6 woken up at: 3570, and 3570 >= 2350+910(wake-up time)
+    Thread 14 woken up at: 4050, and 4050 >= 2430+1322(wake-up time)
+    Thread 10 woken up at: 6050, and 6050 >= 2390+3247(wake-up time)
+    Thread 1 woken up at: 7040, and 7040 >= 2300+4277(wake-up time)
+    Thread 11 woken up at: 7050, and 7050 >= 2400+4403(wake-up time)
+    Thread 2 woken up at: 8080, and 8080 >= 2310+5258(wake-up time)
+    Thread 8 woken up at: 8590, and 8590 >= 2370+5983(wake-up time)
+    Thread 4 woken up at: 9610, and 9610 >= 2330+6914(wake-up time)
+    Thread 3 woken up at: 9620, and 9620 >= 2320+7112(wake-up time)
+    Thread 13 woken up at: 9630, and 9630 >= 2420+7074(wake-up time)
+    Thread 7 woken up at: 10630, and 10630 >= 2360+8208(wake-up time)
+    Thread 0 woken up at: 10640, and 10640 >= 2290+8301(wake-up time)
+    Thread 9 woken up at: 11150, and 11150 >= 2380+8587(wake-up time)
+    Machine halting!
