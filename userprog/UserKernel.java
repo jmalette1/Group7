@@ -3,6 +3,7 @@ package nachos.userprog;
 import nachos.machine.*;
 import nachos.threads.*;
 import nachos.userprog.*;
+import java.util.*; //needed for Linked List and possibly other things, I know "*" is excessive
 
 /**
  * A kernel that can support multiple user processes.
@@ -18,11 +19,19 @@ public class UserKernel extends ThreadedKernel {
     /**
      * Initialize this kernel. Creates a synchronized console and sets the
      * processor's exception handler.
+     * 
+     * Creates a global linked list of free physical pages (from 0 to numPhysPages)
      */
     public void initialize(String[] args) {
 	super.initialize(args);
 
 	console = new SynchConsole(Machine.console());
+	
+	pageListLock = new Lock();
+	freePages = new LinkedList<Integer>();
+	int physPages = Machine.processor().getNumPhysPages();
+	for (int i = 0; i < physPages; i++)
+		freePages.add(i);
 	
 	Machine.processor().setExceptionHandler(new Runnable() {
 		public void run() { exceptionHandler(); }
@@ -106,9 +115,47 @@ public class UserKernel extends ThreadedKernel {
     public void terminate() {
 	super.terminate();
     }
+    
+    /**
+     * NEW METHOD:
+     * Allocates demanded number of pages. Physical pages might not necessarily be contiguous,
+     * since the next method (releasePage) might cause gaps in the freePages linkedList.
+     * 
+     * However, in UserProcess.java, the method "load sections" will load contiguous virtual addresses
+     * 
+     * @param num : number of pages to allocate
+     * 
+     * @return : array of allocated pages (or null if insufficient pages)
+     */
+    public static int[] allocatePages(int num) {
+    	pageListLock.acquire();
+    
+    	if (freePages.size() < num){
+    		pageListLock.release();
+    		return null;
+    	}
+    	
+    	int[] result = new int[num];
+    	
+    	for(int i = 0; i<num; i++)
+    		result[i] = freePages.remove();
+    	
+    	pageListLock.release();
+    	
+    	return result;
+    }
+    
+    public static void releasePage(int physPageNum){
+    	pageListLock.acquire();
+    	freePages.add(physPageNum);
+    	pageListLock.release();
+    }
 
     /** Globally accessible reference to the synchronized console. */
     public static SynchConsole console;
+    
+    public static LinkedList<Integer> freePages;
+    public static Lock pageListLock;
 
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
