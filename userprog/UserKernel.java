@@ -14,7 +14,7 @@ public class UserKernel extends ThreadedKernel {
      */
     public UserKernel() {
 	super();
-    }
+	}
 
     /**
      * Initialize this kernel. Creates a synchronized console and sets the
@@ -106,7 +106,7 @@ public class UserKernel extends ThreadedKernel {
 	String shellProgram = Machine.getShellProgramName();	
 	Lib.assertTrue(process.execute(shellProgram, new String[] { }));
 
-	KThread.currentThread().finish();
+	KThread.finish(); //I had to remove "currentThread" for some reason? gave error message
     }
 
     /**
@@ -145,6 +145,13 @@ public class UserKernel extends ThreadedKernel {
     	return result;
     }
     
+    /**
+     * NEW METHOD:
+     * Releases pages from memory and adds it back to
+     * the freePages list(only one page at a time).
+     * 
+     * @param physPageNum : the physical page number to remove
+     */
     public static void releasePage(int physPageNum){
     	pageListLock.acquire();
     	freePages.add(physPageNum);
