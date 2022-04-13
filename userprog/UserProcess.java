@@ -6,8 +6,6 @@ import nachos.userprog.*;
 
 import java.io.EOFException;
 
-import javax.annotation.processing.Processor;
-
 /**
  * Encapsulates the state of a user process that is not contained in its
  * user thread (or threads). This includes its address translation state, a
@@ -172,7 +170,7 @@ public class UserProcess {
 	
     	TranslationEntry translatedEntry = getTranslationEntry(vpn, false);
 	
-    	if(translatedEntry = null)
+    	if(translatedEntry == null)
     		return 0;   //0 bytes returned as specified instead of error
 	
 	
@@ -187,7 +185,7 @@ public class UserProcess {
     	for(int i = vpn + 1; i <= vpnEnd; i++){
     		translatedEntry = getTranslationEntry(i, false);
     		
-    		if(translatedEntry = null)
+    		if(translatedEntry == null)
     			return amountRead;
 		
     		amountRead2 = Math.min(length - amountRead, pageSize);
@@ -237,7 +235,7 @@ public class UserProcess {
 
     	TranslationEntry translatedEntry = getTranslationEntry(vpn, true);
 
-    	if(translatedEntry = null)
+    	if(translatedEntry == null)
     		return 0;   //0 bytes returned as specified instead of error
 
 
@@ -252,11 +250,11 @@ public class UserProcess {
     	for(int i = vpn + 1; i <= vpnEnd; i++){
     		translatedEntry = getTranslationEntry(i, true);
 		
-    		if(translatedEntry = null)
+    		if(translatedEntry == null)
     			return amountWritten;
 	
     		amountWritten2 = Math.min(length - amountWritten, pageSize);
-    		System.arraycopy(data, offset, memory, Processor.makeAddres(translatedEntry.ppn, 0), amountWritten2);
+    		System.arraycopy(data, offset, memory, Processor.makeAddress(translatedEntry.ppn, 0), amountWritten2);
     		offset += amountWritten2;
     		amountWritten += amountWritten2;
     	}
@@ -362,17 +360,17 @@ public class UserProcess {
     	//Allocate physical page numbers, see UserKernel.java
     	int[] physicalPageNums = UserKernel.allocatePages(numPages); //numPages = lenght of memory needed by process + stackPages + 1 for args
     
-    	if(phsyicalPageNums == null)
+    	if(physicalPageNums == null) {
     		coff.close();
     		Lib.debug(dbgProcess, "\tinsufficient physical memory");
     		return false;
     	}
-    	
-    	if (numPages > Machine.processor().getNumPhysPages()) {
-    		coff.close();
-    		Lib.debug(dbgProcess, "\tinsufficient physical memory2");
-    		return false;
-    	}
+    
+		if(numPages > Machine.processor().getNumPhysPages()) {
+			coff.close();
+			Lib.debug(dbgProcess, "\tinsufficient physical memory2");
+			return false;
+		}
 
     	pageTable = new TranslationEntry[numPages];
     	
@@ -407,6 +405,10 @@ public class UserProcess {
     		UserKernel.releasePage(pageTable[i].ppn);
     	pageTable = null;
     }    
+    
+    public void selfTest(){
+    	System.out.println("UserProcessTest");
+    }
 
     /**
      * Initialize the processor's registers in preparation for running the
