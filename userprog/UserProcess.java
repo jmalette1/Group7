@@ -27,6 +27,20 @@ public class UserProcess {
 	pageTable = new TranslationEntry[numPhysPages];
 	for (int i=0; i<numPhysPages; i++)
 	    pageTable[i] = new TranslationEntry(i,i, true,false,false,false);
+
+	//----------- Task 1 -----------
+	processID = processNum;
+	++processNum;
+
+	localFileTable = new OpenFile[16];
+
+	localFileTable[0] = UserKernel.console.openForReading();
+	localFileTable[1] = UserKernel.console.openForWriting();
+
+	UserKernel.globalFileArray.add(new FileReference(localFileTable[0].getName()));
+	UserKernel.globalFileArray.add(new FileReference(localFileTable[1].getName()));
+
+	//----------- End Task 1 -----------
     }
     
     /**
@@ -142,7 +156,7 @@ public class UserProcess {
      * @return	the number of bytes successfully transferred.
      */
     public int readVirtualMemory(int vaddr, byte[] data) {
-	return readVirtualMemory(vaddr, data, 0, data.length);
+    return readVirtualMemory(vaddr, data, 0, data.length);
     }
 
     /**
@@ -433,17 +447,402 @@ public class UserProcess {
 	processor.writeRegister(Processor.regA1, argv);
     }
 
+    // -------- Task 1 --------
+
     /**
      * Handle the halt() system call. 
      */
     private int handleHalt() {
+    	// if root process
+    	if(processID == 0) {
 
-	Machine.halt();
-	
-	Lib.assertNotReached("Machine.halt() did not halt machine!");
-	return 0;
+	    	Machine.halt();
+		
+	    	Lib.assertNotReached("Machine.halt() did not halt machine!");
+	    	return 0;
+    	}
+    	
+    	return -1;
     }
+    
+    /**
+     * Handle the creat system call. 
+     * Returns a file descriptor 
+     * @param addr memory location of the file
+     * @return file descriptor on success, -1 if an error occured 
+     */
+    
+    private int handleCreat(int addr) {
+    	// argument validation 
+    	int fileDescriptor = Processor.pageFromAddress(addr);
+    	if(fileDescriptor < 0 || fileDescriptor > 15)
+    		return -1;
+    	
+    	// get filename from memory 
+    	String fileName = readVirtualMemoryString(addr, 256);
+    	OpenFile openFile = UserKernel.fileSystem.open(fileName, true);   //attempt to open the file 
+    	
+    	if(openFile == null)
+    		return -1;
+    	
+    	int localFileIndex = -1;
+    	
+    	// Iterate through the local file table to find file
+    	if(fileName != null){
+    		for(int i = 2; i < localFileTable.length; ++i){
+    			if(localFileTable[i] == openFile) 
+    				return localFileIndex = i;
+    		}
+    		
+    		// If the open file isn't found, search for a free space in the local file table and add the file
+    		if(localFileIndex == -1){
+    			for(int i = 2; i < localFileTable.length; ++i){
+    				if(localFileTable[i] == null){
+    					localFileIndex = i;
+    					localFileTable[i] = openFile;
+    					updateGlobalFileArray(fileDescriptor, openFile, fileName);
+    					return localFileIndex;
+    				} else 
+    					return -1; // error
+    			}
+    		}
+    	}
+    	
+    	return -1; // error
+    }
+    
+    /**
+     * Attempts to open the specified file and returns a file descriptor
+     * @param addr memory address of the file 
+     * @return file descriptor on success, -1 if an error occured
+     */
+    
+    private int handleOpen(int addr){
+    	// argument validation 
+    	int fileDescriptor = Processor.pageFromAddress(addr);
+    	if(fileDescriptor < 0 || fileDescriptor > 15)
+    		return -1;
+    	
+    	String fileName = readVirtualMemoryString(addr, 256);
+    	OpenFile openFile = UserKernel.fileSystem.open(fileName, false);
+    	
+    	if(openFile == null)
+    		return -1;
+    	
+    	int localFileIndex = -1;
+    	
+    	if(fileName != null){
+    		for(int i = 2; i < localFileTable.length; ++i){
+    			if(localFileTable[i] == openFile) 
+    				return localFileIndex = i;
+    		}
+    		
+    		if(localFileIndex == -1){
+    			for(int i = 2; i < localFileTable.length; ++i){
+    				if(localFileTable[i] == null){
+    					localFileIndex = i;
+    					localFileTable[i] = openFile;
+    					updateGlobalFileArray(fileDescriptor, openFile, fileName);
+    					return localFileIndex;
+    				} else 
+    					return -1;
+    			}
+    		}
+    	}
+    	
+    	return -1; 
+    }
+    
+    /**
+     * Handles the read system call.
+     * @param fileDescriptor The file descriptor
+     * @param bufferAddr Buffer address
+     * @param size Number of bytes to read
+     * @return Returns the number of bytes read or -1 if an error occurs.
+     */
+    private int handleRead(int fileDescriptor, int bufferAddr, int size){
+    	// argument validation 
+    	if(fileDescriptor < 0 || fileDescriptor > 15 || localFileTable[fileDescriptor] == null || bufferAddr < 0 || size < 0)
+    		return -1;
+    	
+    	
+    	if(size == 0)
+    		return 0;
+    	
+    	byte[] store = new byte[size];
+    	OpenFile openFile = localFileTable[fileDescriptor];
+    	int bytesRead = openFile.read(store, 0, size);
+    	
+    	if(bytesRead < 0)
+    		return -1;
+    	
+    	int bytesWritten = writeVirtualMemory(bufferAddr, store, 0, bytesRead);
+    	
+    	if(bytesRead != bytesWritten)
+    		return -1;
+    	
+    	return bytesRead;
+    	
+    }
+    
+    /**
+     * Handles the write system call
+     * @param fileDescriptor The file descriptor
+     * @param bufferAddr Buffer address 
+     * @param size Number of bytes read
+     * @return Returns the number of bytes successfully written. 0 if nothing written and -1 if an error occured.
+     */
+    
+    private int handleWrite(int fileDescriptor, int bufferAddr, int size){
+    	// argument validation 
+    	if(fileDescriptor < 0 || fileDescriptor > 15 || localFileTable[fileDescriptor] == null || bufferAddr < 0 || size < 0)
+    		return -1;
+    	
+    	if(size == 0)
+    		return 0;
+    	
+    	byte[] store = new byte[size];
+    	OpenFile openFile = localFileTable[fileDescriptor];
+    	
+    	int bytesRead = readVirtualMemory(bufferAddr, store, 0, size);
+    	if(bytesRead < 0)
+    		return -1;
+    	
+    	int bytesWritten = openFile.write(store, 0, bytesRead);
+    	
+    	if(bytesWritten < 0){
+    		return -1;
+    	} else
+    		return bytesWritten;
+ 
+    }
+    
+    /**
+     * Handles the close system call. Closes the file descriptor so it no longer refers to a file or stream. Releases allocated resources
+     * @param fileDescriptor The file descriptor
+     * @return Returns 0 on success or -1 if an error occured. 
+     */
+    private int handleClose(int fileDescriptor){
+    	// argument validation 
+    	if(fileDescriptor < 0 || fileDescriptor > 15 || localFileTable[fileDescriptor] == null)
+    		return -1;
+    	
+    	String fileName = localFileTable[fileDescriptor].getName();
+    	
+    	
+    	if(fileName != null){
+    		localFileTable[fileDescriptor].close();
+    		localFileTable[fileDescriptor] = null;
+    	}
+    	
+    	int globalFileIndex = -1;
+    	for(int i = 0; i < UserKernel.globalFileArray.size(); ++i){
+    		if(UserKernel.globalFileArray.get(i).getName().equals(fileName)){
+    			globalFileIndex = i;
+    			break;
+    		}
+    	}
+    	
+    	if(globalFileIndex == -1){
+    		return -1;
+    	} else {
+    		UserKernel.globalFileArray.get(globalFileIndex).removeReference();
+    		if(UserKernel.globalFileArray.get(globalFileIndex).getReferences() == 0 && UserKernel.globalFileArray.get(globalFileIndex).getUnlinking() == true){
+    			boolean closing = UserKernel.fileSystem.remove(fileName); //attempt to close
+    			if(closing){
+    				return 0; //success
+    			} else {
+    				return -1;
+    			}
+    		}
+    	}
+    	
+    	return -1;
+    }
+    
+    /**
+     * Handles the unlink system call. Deletes a file from the system. If any processes have the file open, the file will remain in existence until the
+     * last file descriptor referring to it is closed. 
+     * @param addr Memory location of file
+     * @return Returns 0 on success or -1 if an error occured 
+     */
+    private int handleUnlink(int addr){
+    	// argument validation 
+    	int fileDescriptor = Processor.pageFromAddress(addr);
+    	if(fileDescriptor < 0 || fileDescriptor > 15)
+    		return -1;
+    	
+    	String fileName = readVirtualMemoryString(addr, 256);
+    	
+    	for(int i = 2; i < localFileTable.length; ++i){
+    		if(localFileTable[fileDescriptor] != null){
+    			if(localFileTable[fileDescriptor].getName().equals(fileName)){
+    				localFileTable[fileDescriptor].close();
+    				localFileTable[fileDescriptor] = null;
+    			}
+    		}
+    	}
+    	
+    	int globalFileIndex = -1;
+    	for(int i = 0; i < UserKernel.globalFileArray.size(); ++i){
+    		if(UserKernel.globalFileArray.get(i).getName().equals(fileName)){
+    			globalFileIndex = i;
+    			break;
+    		}
+    	}
+    	
+    	if(globalFileIndex == -1){
+    		return -1;
+    	} else {
+    		UserKernel.globalFileArray.get(globalFileIndex).setUnlinking(true);
+    		UserKernel.globalFileArray.get(globalFileIndex).removeReference();
+    		if(UserKernel.globalFileArray.get(globalFileIndex).getReferences() == 0){
+    			boolean closing = UserKernel.fileSystem.remove(fileName); //attempt to close
+    			if(closing){
+    				UserKernel.globalFileArray.remove(globalFileIndex);
+    				return 0; //success
+    			} else {
+    				return -1;
+    			}
+    		}
+    	}
+    	
+    	return -1;
+    }
+    
+    /**
+     * Updates the globalFileArray. Increments the number of references when called by handleOpen() or handleCreat()
+     * @param fileDescriptor The file descriptor
+     * @param openFile File for reading and writing
+     * @param fileName File name
+     */
+    private void updateGlobalFileArray(int fileDescriptor, OpenFile openFile, String fileName) {
+    	int globalFileIndex = -1;
+    	
+    	for(int i = 0; i< UserKernel.globalFileArray.size(); ++i){
+    		if(UserKernel.globalFileArray.get(i).getName().equals(fileName)) {
+    			globalFileIndex = i;
+    			break;
+    		}
+    	}
+    	
+    	if(globalFileIndex == -1){
+    		FileReference fileRef = new FileReference(fileName);  //create reference to the Open File
+    		UserKernel.globalFileArray.add(fileRef);
+    	} else {
+    		if(UserKernel.globalFileArray.get(globalFileIndex).getUnlinking() == false)
+    			UserKernel.globalFileArray.get(globalFileIndex).addReference();
+    	}
+    }
+    
+    // --------- End Task 1 --------
 
+
+    // ---------- Task 3 -----------
+    private int handleExit() {
+    	UThread.stop();
+    	file.close();
+    	System.gc();
+    	String username=System.getProperty("user.name");
+    	if(username.equals("root"))
+    			halt();
+    	if(counter==1)
+    			halt();
+    	
+    	Machine.halt();
+    }
+    
+    private int handleExec(int file, int argc, int argv) {
+    	//Checking if valid or not
+    	if(file < 0 || argc < 0 || argv < 0) {
+    		System.out.println("Not valid");
+    		return -1;
+    	}
+    	
+    	String filename = readVirtualMemoryString(file, 256);
+    	
+    	//Checking if valid or not
+    	if(filename == null) {
+    		System.out.println("Not valid");
+    		return -1;
+    	}
+    	
+    	//Checking if valid or not
+    	if(filename.contains(".coff") == false) {
+    		System.out.println("Not valid");
+    		return -1;
+    	}
+    	
+    	String[] fileString = filename.split("\\.");
+    			String[] argue = new String[argc];
+    	
+    	//New Constructor for child
+    	UserProcess child = UserProcess.newUserProcess();
+    	
+    	if(child.execute(filename, argue)) {
+    		childProcess.add(child);
+    		return child.processID;
+    	}
+    	else {
+    		return -1;
+    	}
+    }
+    
+    private int handleJoin(int processID, int status) {
+    	
+    	//Checking if valid or not
+    	if(processID < 0 || status < 0) {
+    		System.out.println("Not valid");
+    		return -1;
+    	}
+    	
+    	UserProcess child = null;
+    	
+    	for (int i = 0; i < childProcess.size(); i++) {
+    		if(childProcess.get(i).processID == processID) {
+    			child = childProcess.get(i);
+    		}
+    	}
+    	
+    	//Checking if valid or not
+    	if(child == null) {
+    		return -1;
+    	}
+    	
+    	//joining the child to parent
+    	child.thread.join();
+    	
+    	//creating the status for the child process
+    	Lock.acquire();
+    	Integer Childstatus = Statuses.get(child.processID);
+    	Lock.release();
+    	
+    	//Checking if valid or not
+    	if(Childstatus == null) {
+    		return -1;
+    	}
+    	
+    	//Checking if valid or not
+    	if(status != null) {
+    		byte[] bytes = new byte[4];
+    		Lib.bytesFromInt(bytes, 0, Childstatus);
+    		int bytesWrite = writeVirtualMemory(status, bytes);
+    		
+    		if(bytesWrite == 4) {
+    			return 1;
+    		}
+    		else {
+    			return -1;
+    		}
+    	
+    	}
+    	
+    	else {
+    		return -1;
+    	}
+    }
+    // ---------- End Task 3 -------
+    
 
     private static final int
         syscallHalt = 0,
@@ -485,17 +884,36 @@ public class UserProcess {
      * @param	a3	the fourth syscall argument.
      * @return	the value to be returned to the user.
      */
-    public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
-	switch (syscall) {
-	case syscallHalt:
-	    return handleHalt();
+    // -------- Task 1 --------
+    
+	public int handleSyscall(int syscall, int a0, int a1, int a2, int a3) {
+		switch (syscall) {
+			case syscallHalt:
+            return handleHalt();
+        case syscallCreate:
+                return handleCreat(a0);
+        case syscallOpen:
+                return handleOpen(a0);
+        case syscallRead:
+                return handleRead(a0, a1, a2);
+        case syscallWrite:
+                return handleWrite(a0, a1, a2);
+        case syscallClose:
+              return handleClose(a0);
+        case syscallUnlink:
+              return handleUnlink(a0);
+        case syscallExec:
+              return handleExec(a0, a1, a2);
+        case syscallJoin:
+              return handleJoin(a0, a1);
+        case syscallExit:
+              return handleExit(a0);
 
-
-	default:
-	    Lib.debug(dbgProcess, "Unknown syscall " + syscall);
-	    Lib.assertNotReached("Unknown system call!");
-	}
-	return 0;
+        default:
+            Lib.debug(dbgProcess, "Unknown syscall " + syscall);
+            Lib.assertNotReached("Unknown system call!");
+        }
+        return 0;
     }
 
     /**
@@ -544,4 +962,15 @@ public class UserProcess {
 	
     private static final int pageSize = Processor.pageSize;
     private static final char dbgProcess = 'a';
+
+	// ----------- Task 1 -----------
+	
+	private static int processNum = 0;
+	public int processID;
+	public OpenFile[] localFileTable;
+	private static final char debugFlag = 'f';
+
+	//----------- End Task 1 -----------
+	
+	public int counter;
 }

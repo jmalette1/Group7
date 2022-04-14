@@ -13,7 +13,7 @@ public class UserKernel extends ThreadedKernel {
      * Allocate a new user kernel.
      */
     public UserKernel() {
-	super();
+    	super();
 	}
 
     /**
@@ -23,18 +23,18 @@ public class UserKernel extends ThreadedKernel {
      * Creates a global linked list of free physical pages (from 0 to numPhysPages)
      */
     public void initialize(String[] args) {
-	super.initialize(args);
+    	super.initialize(args);
 
-	console = new SynchConsole(Machine.console());
+    	console = new SynchConsole(Machine.console());
 	
-	pageListLock = new Lock();
-	freePages = new LinkedList<Integer>();
-	int physPages = Machine.processor().getNumPhysPages();
-	for (int i = 0; i < physPages; i++)
-		freePages.add(i);
+    	pageListLock = new Lock();
+    	freePages = new LinkedList<Integer>();
+    	int physPages = Machine.processor().getNumPhysPages();
+    	for (int i = 0; i < physPages; i++)
+    		freePages.add(i);
 	
-	Machine.processor().setExceptionHandler(new Runnable() {
-		public void run() { exceptionHandler(); }
+    	Machine.processor().setExceptionHandler(new Runnable() {
+    		public void run() { exceptionHandler(); }
 	    });
     }
 
@@ -42,20 +42,20 @@ public class UserKernel extends ThreadedKernel {
      * Test the console device.
      */	
     public void selfTest() {
-	super.selfTest();
+    	super.selfTest();
 
-	System.out.println("Testing the console device. Typed characters");
-	System.out.println("will be echoed until q is typed.");
+    	System.out.println("Testing the console device. Typed characters");
+    	System.out.println("will be echoed until q is typed.");
 
-	char c;
+    	char c;
 
-	do {
-	    c = (char) console.readByte(true);
-	    console.writeByte(c);
-	}
-	while (c != 'q');
+    	do {
+    		c = (char) console.readByte(true);
+    		console.writeByte(c);
+    	}
+    	while (c != 'q');
 
-	System.out.println("");
+    	System.out.println("");
     }
 
     /**
@@ -64,10 +64,10 @@ public class UserKernel extends ThreadedKernel {
      * @return	the current process, or <tt>null</tt> if no process is current.
      */
     public static UserProcess currentProcess() {
-	if (!(KThread.currentThread() instanceof UThread))
-	    return null;
+    	if (!(KThread.currentThread() instanceof UThread))
+    		return null;
 	
-	return ((UThread) KThread.currentThread()).process;
+    	return ((UThread) KThread.currentThread()).process;
     }
 
     /**
@@ -84,11 +84,11 @@ public class UserKernel extends ThreadedKernel {
      * that caused the exception.
      */
     public void exceptionHandler() {
-	Lib.assertTrue(KThread.currentThread() instanceof UThread);
+    	Lib.assertTrue(KThread.currentThread() instanceof UThread);
 
-	UserProcess process = ((UThread) KThread.currentThread()).process;
-	int cause = Machine.processor().readRegister(Processor.regCause);
-	process.handleException(cause);
+    	UserProcess process = ((UThread) KThread.currentThread()).process;
+    	int cause = Machine.processor().readRegister(Processor.regCause);
+    	process.handleException(cause);
     }
 
     /**
@@ -99,21 +99,21 @@ public class UserKernel extends ThreadedKernel {
      * @see	nachos.machine.Machine#getShellProgramName
      */
     public void run() {
-	super.run();
+    	super.run();
 
-	UserProcess process = UserProcess.newUserProcess();
+    	UserProcess process = UserProcess.newUserProcess();
 	
-	String shellProgram = Machine.getShellProgramName();	
-	Lib.assertTrue(process.execute(shellProgram, new String[] { }));
+    	String shellProgram = Machine.getShellProgramName();	
+    	Lib.assertTrue(process.execute(shellProgram, new String[] { }));
 
-	KThread.finish(); //I had to remove "currentThread" for some reason? gave error message
+    	KThread.finish(); //I had to remove "currentThread" for some reason? gave error message
     }
 
     /**
      * Terminate this kernel. Never returns.
      */
     public void terminate() {
-	super.terminate();
+    	super.terminate();
     }
     
     /**
@@ -166,4 +166,8 @@ public class UserKernel extends ThreadedKernel {
 
     // dummy variables to make javac smarter
     private static Coff dummy1 = null;
+
+	//----------------Task 1 Variables-------------------
+    	public static LinkedList<FileReference> globalFileArray = new LinkedList<FileReference>();
+    	//----------------End Task 1-------------------------
 }
